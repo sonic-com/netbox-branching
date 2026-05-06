@@ -64,7 +64,14 @@ def check_object_accessible_in_branch(branch, model, object_id):
         else:
             return True
 
-    # Object doesn't exist in main - check if it was created in the branch
+    # Object isn't in main - but if it exists in the active branch's schema,
+    # the modification is targeting a real branch-local object (created in this
+    # branch, or pre-fork data still present here). Conflicts with main are
+    # surfaced at sync/merge time, not at every save.
+    if model.objects.filter(pk=object_id).exists():
+        return True
+
+    # Object isn't in main or branch - fall back to ChangeDiff for completeness
     content_type = ContentType.objects.get_for_model(model)
     return ChangeDiff.objects.filter(
         branch=branch,
